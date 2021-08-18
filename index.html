@@ -1,0 +1,159 @@
+<html>
+<head>
+<style>
+    table, th, td {
+    border: 1px solid black;    
+    }
+</style>
+</head>
+<body>
+  <h1>PouchDB performance test: insert/update muchos docs</h1>
+ <table style="width:100%" border: 1px solid black>
+  <tr>
+    <th>Acción</th>
+    <th>Duración en ms.</th>
+  </tr>
+  <tr>
+    <td>insertando docs - bulkDocs</td>
+    <td><p id="valor"></p></td>
+  </tr>
+  <tr>
+    <td>allDocs</td>
+    <td><p id="valora0"></td>
+  </tr>
+  <tr>
+    <td>bulkDocs (update)</td>
+    <td><p id="valorb0"></p></td>
+  </tr>
+  <tr>
+    <td>allDocs</td>
+    <td><p id="valora1"></td>
+  </tr>
+  <tr>
+    <td>bulkDocs (update)</td>
+    <td><p id="valorb1"></p></td>
+  </tr>
+  <tr>
+    <td>allDocs</td>
+    <td><p id="valora2"></td>
+  </tr>
+  <tr>
+    <td>bulkDocs (update)</td>
+    <td><p id="valorb2"></p></td>
+  </tr>
+  <tr>
+    <td>allDocs</td>
+    <td><p id="valora3"></td>
+  </tr>
+  <tr>
+    <td>bulkDocs (update)</td>
+    <td><p id="valorb3"></p></td>
+  </tr>
+  <tr>
+    <td>allDocs</td>
+    <td><p id="valora4"></td>
+  </tr>
+  <tr>
+    <td>bulkDocs (update)</td>
+    <td><p id="valorb4"></p></td>
+  </tr>
+  <tr>
+    <td>allDocs</td>
+    <td><p id="valora5"></td>
+  </tr>
+  <tr>
+    <td>bulkDocs (update)</td>
+    <td><p id="valorb5"></p></td>
+  </tr>
+</table>
+
+  <input id="websql" type=checkbox name="WebSQL" value="websql"> WebSQL <p/>
+  <input id="autocompaction" type=checkbox name="Auto-compaction" value="autocompaction"> Auto-compaction  <p/>
+  Number of docs: <input id="numdocs" type="number" value="5000"> <p/>
+  Fields/document: <input id="numFields" type "number" value="20"> <p/>
+  <button id="go" type=button onclick="runTest()">Go!</button>
+  <script src="pouchdb-7.2.1.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    
+    function randomString() {
+      var str = '';
+      for (var i = 0; i < 10; i++) {
+        str += (Math.random() * 1000000).toString();
+      }
+    }
+    
+    function fillDoc(doc) {
+      for (var i = 0; i < numFields; i++) {
+        doc['value_' + i] = randomString();
+      }
+    }
+    
+    function runTest() {
+      var opts = {};
+      if (document.getElementById('websql').checked) {
+        opts.adapter = 'websql';
+      }
+      opts.auto_compaction = !!document.getElementById('autocompaction').checked;
+
+      var db = new PouchDB('mydb', opts);
+      if (!db.adapter) {
+        db = new PouchDB('mydb');
+      }
+      
+      var numDocs = parseInt(document.getElementById('numdocs').value);
+      
+      function insertDocs() {
+        var docs = [];
+        for (var i = 0; i < numDocs; i++) {
+          var doc = {_id: i.toString()};
+          fillDoc(doc);
+          docs.push(doc);
+        }
+        var start = new Date();
+        return db.bulkDocs(docs).then(function () {
+		  var end = new Date(); 
+		  document.getElementById("valor").innerHTML = end - start;
+        })
+      }
+
+      function updateDocs(i) {
+	    var nombre1 = "valora"+i;
+		var nombre2 = "valorb"+i;
+        var start = new Date();
+        return db.allDocs({include_docs: true}).then(function (res) {
+          var end = new Date();
+		  document.getElementById(nombre1).innerHTML = end - start;
+          var docs = res.rows.map(function (x) { return x.doc; });
+          docs.forEach(function (doc) {
+            fillDoc(doc);
+          });
+          var start = new Date();
+          return db.bulkDocs(docs).then(function () {
+            var end = new Date();
+		  document.getElementById(nombre2).innerHTML = end - start;
+          });
+        });
+      }
+      
+      console.log('Running test with this database:');
+      
+      var promise = db.info().then(console.log.bind(console)).then(insertDocs);
+    
+      for (var i = 0; i < 5; i++) {
+        promise = promise.then(updateDocs(i));
+      }
+    
+      promise.then(function () {
+        console.log('Terminado')
+      }).catch(console.log.bind(console));
+    }
+    
+    window.runTest = runTest;
+    
+  })();
+  </script>
+</body>
+</html>
+  
